@@ -2,21 +2,22 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'nirmal1126/trend-app:latest'
+        DOCKER_IMAGE = 'nirmal1126/trend-app'
         DOCKER_CREDS = 'dockerhub-credentials'
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/nirmalaws23/trend-app.git'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE .'
+                script {
+                    env.IMAGE_TAG = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    sh 'docker build -t $DOCKER_IMAGE:$IMAGE_TAG .'
+                    sh 'docker tag $DOCKER_IMAGE:$IMAGE_TAG $DOCKER_IMAGE:latest'
+                }
             }
         }
 
@@ -30,7 +31,8 @@ pipeline {
                     )
                 ]) {
                     sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE'
+                    sh 'docker push $DOCKER_IMAGE:$IMAGE_TAG'
+                    sh 'docker push $DOCKER_IMAGE:latest'
                     sh 'docker logout'
                 }
             }
@@ -40,6 +42,8 @@ pipeline {
             steps {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl apply -f ingress.yaml'
+
+                sh 'kubectl set image deployment/trend-app trend-app=$DOCKER_IMAGE:$IMAGE_TAG'
             }
         }
 
