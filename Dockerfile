@@ -1,14 +1,12 @@
-# Stage 1: Build static assets
-FROM node:18-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-# Stage 2: Serve via Nginx on Port 3000
 FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-RUN sed -i 's/listen       80;/listen       3000;/g' /etc/nginx/conf.d/default.conf
+
+# Copy compiled production assets from dist folder to Nginx server root
+COPY dist/ /usr/share/nginx/html/
+
+# Expose port 3000 as required by the assignment guidelines
 EXPOSE 3000
+
+# Custom Nginx configuration to serve traffic on port 3000
+RUN sed -i 's/listen  *80;/listen 3000;/g' /etc/nginx/conf.d/default.conf
+
 CMD ["nginx", "-g", "daemon off;"]
