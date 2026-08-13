@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'nirmal1126/trend-app:latest'
+        DOCKER_CREDS = 'dockerhub-credentials'
+    }
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -10,29 +15,23 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t nirmalaws23/trend-app:latest .'
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
 
         stage('Push Image to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
-                        docker push nirmalaws23/trend-app:latest
-                    '''
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USER')]) {
+                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
-                    sh '''
-                        kubectl apply -f deployment.yaml
-                        kubectl apply -f service.yaml
-                    '''
-                }
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl apply -f service.yaml'
             }
         }
     }
