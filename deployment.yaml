@@ -17,24 +17,34 @@ spec:
       containers:
         - name: trend-app
           image: nirmal1126/trend-app:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: trend-app-service
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "external"
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  labels:
+    app: trend-app
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: trend-app
   ports:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 31512
